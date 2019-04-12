@@ -19,7 +19,7 @@ vignette("BIEN")
 #Beyond BIEN, we will work today with other databases
 #We will use the "rgbif" package from R-OpenSci to use with GBIF
 #The GBIF acronym stands for Global Biodiversity Information Facility
-#install.packages("rgbif")  
+install.packages("rgbif")  
 #or
 #devtools::install_github("ropensci/rgbif")
 library(rgbif)
@@ -28,6 +28,7 @@ library(rgbif)
 ```{r}
 #There is also a package for I-DIGBIO and I-Naturalist, but even better there is a package for multiple data bases called "spocc"
 #devtools::install_github("ropensci/spocc")
+install.packages("spocc") 
 library(spocc)
 ```
 
@@ -76,6 +77,7 @@ points(cbind(J_polita$longitude, J_polita$latitude), col="green", pch=20, cex=.8
 Mapping occurrence data is informative for discerning species ranges overlap. But could we add  more information, such as how each species overlaps with climate variables?. 
 
 Of course we can, by tapping into the worldclim data base: http://www.worldclim.org/
+- /bioclim gives codes for biological climate data 
 
 Peruse their on-line resource, where it's possible to obtain data for past and future climate based on various climate models.
 
@@ -126,23 +128,30 @@ plot(peninsula.worldclim[["bio1"]])
 
 Answer the questions about this peninsula example. Then do your own example from Latin America:
 1. Where in the world is the peninsula mapped above?
+This is the Iberian peninsula, where Spain and Portugal are located.
+
 2. Is altitude a climate variable? How do the peninsula maps plotted above support your answer?
+Yes altitude is a climate variable because it affects the climate (temperature, rainfall, wind patterns etc.) that organisms at any given altitude experience. It is clear from the above example that high altitudes (mountain ranges) and low temperatures consistently co-occur. From this we can hypothesize that altitude affects temperature (and likely many other climate variables) in the Iberian peninsula. 
+
 3. Make a South America map with occurrence data for Jungia pauciflora & J. polita and:
           a. Crop the map to allow discerning more detail in the two ranges
           b. Also include altitude data or climate data, with occurrence points overlayed.
+Below!
 
 
 
 ```{r}
 #Trimming data to match South American region
+all.worldalt <- raster::getData("worldclim", res = 10, var = "alt")
 SAmerica.worldalt <- crop(all.worldalt, extent(-75, -50, -30, -15))
 plot(SAmerica.worldalt[["alt"]])
 #Superimposing data
 #Occurrence data overlays
-points(cbind(J_pauciflora$longitude, J_pauciflora$latitude), col="red", pch=20, cex=.8)
-#points(cbind(J_paniculata$longitude, J_paniculata$latitude), col="blue", pch=20, cex=.8)
-points(cbind(J_polita$longitude, J_polita$latitude), col="white", pch=20, cex=.8)
-#plot(SAmerica.worldclim[["alt"]])
+J_paniculata <- BIEN_occurrence_species(species = "Jungia paniculata")
+J_pauciflora <- BIEN_occurrence_species(species = "Jungia pauciflora")
+J_polita <- BIEN_occurrence_species(species = "Jungia polita")
+points(cbind(J_pauciflora$longitude, J_pauciflora$latitude), col="purple", pch=20, cex=.8)
+points(cbind(J_polita$longitude, J_polita$latitude), col="red", pch=20, cex=.8)
 # more graphical parameters here: https://www.statmethods.net/advgraphs/parameters.html
 ```
 
@@ -278,6 +287,7 @@ print(c(type, obs))
 Here's another example of a loop, counting records from different years. 
 
 What does the output tell us about dates in the GBIF database?  
+The output tells us that dates in the GBIF database, particularly for entries earlier than 1900, may not be exact. 
 
 ```{r}
 #Here are all the years I want to look up
@@ -301,10 +311,10 @@ Let's go back to our peninsula, which is a hotspot of endemism for many plant an
 ```{r}
 library(rgbif)
 Spergularia <- occ_search(scientificName="Spergularia melanocaulos", limit=1000)
-#head(Spergularia)
+head(Spergularia)
 colnames(Spergularia$data)
-#Spergularia$data$genus
-#Spergularia$data$species
+Spergularia$data$genus
+Spergularia$data$species
 unique(Spergularia$data$genus)
 unique(Spergularia$data$species)
 ```
@@ -325,6 +335,7 @@ tail(Spergularia.small)
 #There are often occurrences with missing values to remove 
 dim(Spergularia.small)
 Spergularia.small <- Spergularia.small[complete.cases(Spergularia.small),]
+#Only want rows with complete geocoding data, accomplished with complete.cases argument
 dim(Spergularia.small)
 #Also there may be duplicates, the same plant or population observed twice
 #Or uploaded twice into the database
@@ -348,7 +359,7 @@ DawnRedwood
 #Also, looking in "Environment" in the upper right, we can see that 
 #this is not a dataframe. It is a new type of object "Large occdat" which has 10 elements
 #One of those elements is data
-#We can ask for at data using this format
+#We can ask for that data using this format
 DawnRedwood.dat <- (DawnRedwood$gbif$data)
 head(DawnRedwood.dat)
 #But that gives ALL the fields. 
@@ -362,7 +373,7 @@ dim(DawnRedwood.df)
 DawnRedwood.df <- DawnRedwood.df[complete.cases(DawnRedwood.df),]
 dim(DawnRedwood.df)
 DawnRedwood.df
-#You should see that six of our 50 lines were left out
+#You should see that five of our 50 lines were left out
 ```
 
 ```{r}
@@ -391,25 +402,137 @@ Minuartia recurva
 Petrocoptis hispanica
 Petrocoptis pyrenaica
 
-Choose any two, and do the following:
+
 
 WORK WITH TAXISE
 1. Look up - are they accepted names or are they synonyms?
+They are accepted names.
+```{r}
+library("rgbif")
+library("spocc")
+library("taxize")
+results=gnr_resolve(names="Acer saccharum")
+head(results$matched_name)
+
+name= "Acer saccharum"  
+tsn=get_tsn(name, accepted=FALSE)
+tsn
+lapply(tsn, itis_acceptname) 
+```
+
+```{r}
+library("rgbif")
+library("spocc")
+library("taxize")
+results=gnr_resolve(names="Malus pumila")
+head(results$matched_name)
+
+name= "Malus pumila"  
+tsn=get_tsn(name, accepted=FALSE)
+tsn
+lapply(tsn, itis_acceptname) 
+```
+
 2. Look up the two plant taxa. Are they both angiosperms?
+Yes they are both angiosperms. They are both of the class Magnoliopsida.
+
+```{r}
+classification(c("Acer saccharum", "Malus pumila"), db="itis")
+```
+
 3. Angiosperm or otherwise, what plant family do they belong to?
+Acer saccharum belongs to the Sapindaceae family and Malus pumila belongs to the Rosaceae family.
+
 4. For at least one genus, look up all the species in that genus.
+```{r}
+children("Acer", db="col")
+```
+
 5. For one species, look up to see if there are subspecies or other infraspecific forms.
+```{r}
+children("Acer saccharum", db="col")
+```
+
 
 WORK WITH RGBIF OR SPOCC
 6. For both, search and download species occurrence data; prepare as a data-frame
-7. Clean-up the data-frame:  remove occurrences with missing data and duplicates
+```{r}
+A_saccharum <- occ(q="Acer saccharum", from="gbif")
+A_saccharum
+A_saccharum.dat <- (A_saccharum$gbif$data)
+head(A_saccharum.dat)
+```
 
+```{r}
+M_pumila <- occ(q="Malus pumila", from="gbif")
+M_pumila
+M_pumila.dat <- (M_pumila$gbif$data)
+head(M_pumila.dat)
+```
+
+7. Clean-up the data-frame:  remove occurrences with missing data and duplicates
+```{r}
+A_saccharum.df <- occ2df(A_saccharum)
+A_saccharum.df
+dim(A_saccharum.df)
+A_saccharum.df <- A_saccharum.df[complete.cases(A_saccharum.df),]
+dim(A_saccharum.df)
+A_saccharum.df
+A_saccharum.udf <- unique(A_saccharum.df)
+dim(A_saccharum.udf)
+```
+
+```{r}
+M_pumila.df <- occ2df(M_pumila)
+M_pumila.df
+dim(M_pumila.df)
+M_pumila.df <- M_pumila.df[complete.cases(M_pumila.df),]
+dim(M_pumila.df)
+M_pumila.df
+M_pumila.udf <- unique(M_pumila.df)
+dim(M_pumila.udf)
+```
 
 WORK WITH OCCURRENCE DATA, WORLDCLIM DATA AND MAPS
-8. Map occurrence data with a climate variable for one species on the peninsula
-9. Also map that species with climate variables on a world map or European map. Are you convinced that the species is endemic to this peninsula?
-10. Returning to your results for #4 above, find another species with a range outside of the  peninsula. Download occurrence data and map on a world map. 
-11. Then re-map on an appropriately cropped map.
+###8. Map occurrence data with a climate variable for one species on the peninsula
+```{r}
+all.worldclim <- raster::getData("worldclim", res = 10, var = "bio")
+peninsula.worldclim <- crop(all.worldclim, extent(-120, -50, 20 , 50))
+plot(peninsula.worldclim[["bio1"]])
+points(cbind(M_pumila_sub$longitude, M_pumila_sub$latitude), col="purple", pch=20, cex=.8)
+```
+
+###9. Also map that species with climate variables on a world map or European map. Are you convinced that the species is endemic to this peninsula?
+
+I do not think that the species is endemic to North America. There are occurance records in Europe, Australia, and New Zeland. However it is possiable that the species is endemic to North America and was spread to other parts of the world through colonialism. 
+
+```{r}
+library(dplyr)
+M_pumila_sub <- filter(M_pumila.df, name == "Malus pumila Mill.")
+```
+
+```{r}
+all.worldclim <- raster::getData("worldclim", res = 10, var = "bio")
+plot(all.worldclim[["bio1"]])
+points(cbind(M_pumila_sub$longitude, M_pumila_sub$latitude), pch = 16, cex = 0.5, col = "red")
+```
+
+###10. Returning to your results for #4 above, find another species with a range outside of the  peninsula. Download occurrence data and map on a world map. 
+```{r}
+A_buergerianum	 <- BIEN_occurrence_species(species = "Acer buergerianum")
+all.worldclim <- raster::getData("worldclim", res = 10, var = "bio")
+plot(all.worldclim[["bio1"]])
+points(cbind(A_buergerianum$longitude, A_buergerianum$latitude), pch = 16, cex = 0.5, col = "red")
+```
+
+###11. Then re-map on an appropriately cropped map.
+```{r}
+all.worldclim <- raster::getData("worldclim", res = 10, var = "bio")
+peninsula.worldclim <- crop(all.worldclim, extent(-130, -70, 30 , 50))
+plot(peninsula.worldclim[["bio1"]])
+points(cbind(A_buergerianum$longitude, A_buergerianum$latitude), col="purple", pch=20, cex=.8)
+```
 
 ONE LAST THING
 12. Don't forget to identify the peninsula that we are working with!
+The peninsula in the earlier examples was the Iberian peninsula. For my Acer plotting I used North America. 
